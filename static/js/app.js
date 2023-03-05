@@ -1,9 +1,24 @@
 // let mt_url = "https://svc.metrotransit.org/mtgtfs/gtfs.zip";
+
+let clickedRoute = '';
+let clickedLayer = null;
+let prevLayerClicked = null;
+let prevRoute = null;
+
 function underRoute(feature) {
   return {
     color: `black`,
-    weight: 6,
+    weight: 8,
     opacity: 0.7,
+    dashArray: ''
+  }
+}
+
+function selectedUnderRoute(feature) {
+  return {
+    color: 'black',
+    weight: 20,
+    opacity: 1,
     dashArray: ''
   }
 }
@@ -11,8 +26,8 @@ function underRoute(feature) {
 function routeStyle(feature) {
   return {
     color: `#${feature.properties.route_color}`,
-    weight: 4,
-    opacity: 0.7,
+    weight: 5,
+    opacity: 0.65,
     dashArray: ''
   };
 }
@@ -27,18 +42,17 @@ function selectedRoute(feature) {
 }
 
 let stopMarkerOptions = {
-  radius: 3,
+  radius: 12,
   color: "#000000",
   weight: 1,
   opacity: .5,
-  fillOpacity: 0.1,
-  fillColor: '#ffffff'
-
+  fillOpacity: 0.3,
+  fillColor: '#000000'
 };
 
 
 
-function onEachRoute(feature,layer) {  
+function onEachRoute(feature, layer, type) {  
 
   layer.bindPopup(`<p><strong>${feature.properties.route_name}</strong><br>
                     Route ID: ${feature.properties.route_id}<br>
@@ -59,14 +73,23 @@ function onEachRoute(feature,layer) {
 
       // Set route style when selected
       click: e => {
-          // Set selected route style when clicked
-          e.target.setStyle(selectedRoute);
+          if (prevLayerClicked) {
+            prevLayerClicked.setStyle(routeStyle(prevRoute));
+          }
+          // clickedRoute = e.target.feature.properties.route_id;
+          // clickedLayer = e.target;
+          // resizeUnderRoute(clickedRoute);
 
+          e.target.setStyle(selectedRoute(feature));
+          // filterSelectedRoute(feature);
           // Zoom to fit route boundaries
           myMap.fitBounds(e.target._bounds);
 
+          
+
           // Store as last layer clicked
-          let prevLayerClicked = e.target;
+          prevLayerClicked = e.target;
+          prevRoute = feature;
           }
       });
 }
@@ -78,34 +101,47 @@ function onEachStop(feature,layer) {
 
       // Set route highlight style on hover
       mouseover: e => {
-          layer.setStyle(selectedRoute);
+          // e.target.setStyle(selectedRoute);
       },
 
       // Reset route style when hover 
       mouseout: e => {
-          layer.setStyle(routeStyle);
+          // e.target.setStyle(routeStyle);
       },
 
       // Set route style when selected
       click: e => {
-          // Set selected route style when clicked
-          layer.setStyle(selectedRoute);
-
+          
           // Zoom to fit route boundaries
-          myMap.fitBounds(e.target._bounds);
+          myMap.fitBounds(layer.getBounds(), false);
+          
 
           // Store as last layer clicked
-          let prevLayerClicked = layer;
+          prevLayerClicked = layer;
           }
-      })
+      });
+    layer.bindPopup(`<p><strong>${feature.properties.stop_name}</strong><br>
+                Stop ID: ${feature.properties.stop_id}<br>
+                Description: ${feature.properties.stop_desc}<br>
+                Location Type: ${feature.properties.location_type}<br>
+                Wheelchair Boarding: ${feature.properties.wheelchair_boarding}<br>
+                Platform Code: ${feature.properties.platform_code}<br></p>`
+                );
+}
 
-      layer.bindPopup(`<p><strong>${feature.properties.stop_name}</strong><br>
-                  Stop ID: ${feature.properties.stop_id}<br>
-                  Description: ${feature.properties.stop_desc}<br>
-                  Location Type: ${feature.properties.location_type}<br>
-                  Wheelchair Boarding: ${feature.properties.wheelchair_boarding}<br>
-                  Platform Code: ${feature.properties.platform_code}<br></p>`
-                  );
+// var picnic_parks = L.geoJson(myJson, {filter: picnicFilter}).addTo(map);
+function resizeUnderRoute(feature) {
+  feature.setStyle(selectedUnderRoute);
+  
+}
+
+function filterSelectedRoute(id) {
+  if (feature.properties.route_id === clickedRoute) return true
+
+
+  const filteredFeatures = kitespots.features.filter(item => { 
+    return item.properties.windDirection.split("/").includes("S");
+});
 }
 
 let myMap = L.map("map", {
@@ -119,7 +155,9 @@ let streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', 
 }).addTo(myMap)
 
 let underRoutesLayer = L.geoJson(feed_geojson, {
-  style: underRoute
+  // filter: filterSelectedRoute,
+  style: underRoute,
+  onEachFeature: onEachRoute
 })
 
 let routesLayer = L.geoJSON(feed_geojson, {
@@ -132,8 +170,9 @@ routesLayer.addTo(myMap);
 
 
 let stopsLayer = L.geoJSON(stops_geojson, {
+  onEachFeature: onEachStop,
   pointToLayer: function (feature, latlng) {
-      return L.circleMarker(latlng, stopMarkerOptions).bindPopup(`<p><strong>${feature.properties.stop_name}</strong><br>
+      return L.circle(latlng, stopMarkerOptions).bindPopup(`<p><strong>${feature.properties.stop_name}</strong><br>
                 Stop ID: ${feature.properties.stop_id}<br>
                 Description: ${feature.properties.stop_desc}<br>
                 Location Type: ${feature.properties.location_type}<br>

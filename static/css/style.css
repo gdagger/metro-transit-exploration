@@ -1,3 +1,7 @@
+body {
+    background-color: whitesmoke;
+  }
+
 #map { 
     height: 500px;
     width: 1000px
@@ -6,6 +10,11 @@
 
 .iconsdiv{
     width:20px; height:20px;
-    /* background-image:url("icon2.jpg"); */
     background-size: 20px 20px;
+}
+
+img{
+    padding: 6px;
+    margin-top: 4px;
+    margin-bottom: 7px;
 }

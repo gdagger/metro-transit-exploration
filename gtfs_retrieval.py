@@ -36,11 +36,13 @@ routes_info['route_color'] = routes_info['route_color'].fillna('ffffff')
 routes_info_dict = routes_info.set_index('route_id').agg(list, axis=1).to_dict()
 
 
-# Loop through geojson features to add route id
+# Loop through geojson features to add properties
 for feature in feed_geojson['features']:
+
     properties = feature['properties']
     shape_id = properties['shape_id']
     route_id = route_shape_dict[shape_id]
+
     properties['route_id'] = route_id
     properties['route_desc'] = routes_info_dict[route_id][0]
     properties['route_type'] = routes_info_dict[route_id][1]
@@ -48,7 +50,7 @@ for feature in feed_geojson['features']:
     properties['route_color'] = routes_info_dict[route_id][2]
 
 
-# Create function to set geojson data as a variable in shapes.js
+# Create function to set geojson data as a variable in local js file
 def write_geojson(file, data, varname):
     file_path = f"./static/data/{file}"
     
@@ -61,7 +63,7 @@ def write_geojson(file, data, varname):
         lines = f.readlines()
         text = f'let {varname} = '
         lines.insert(0, text)
-
+    
     with open(file_path, 'w') as f:
         f.write(''.join(lines))
 
